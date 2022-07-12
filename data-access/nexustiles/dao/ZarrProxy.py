@@ -32,6 +32,58 @@ h.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(mes
 
 logger.addHandler(h)
 
+class ZarrDatasets:
+    __full_names = {}
+    __short_names = {}
+
+    def __init__(self, full_name, short_name, chunking_configs: list[tuple[int, int, int]]):
+        self.short_name = short_name
+        self.full_name = full_name
+        self.configs = chunking_configs
+
+        assert len(chunking_configs) > 0
+
+        self.default_config = self.configs[0]
+
+    @classmethod
+    def register(cls, full_name, short_name, chunking_configs: list[tuple[int, int, int]]):
+        assert full_name not in cls.__full_names and short_name not in cls.__short_names, "Cannot register duplicate set"
+
+        ds = ZarrDatasets(full_name, short_name, chunking_configs)
+
+        cls.__full_names[full_name] = ds
+        cls.__short_names[short_name] = ds
+
+    @classmethod
+    def full_to_short(cls, full_name):
+        return cls.__full_names[full_name].short_name if full_name in cls.__full_names.keys() else None
+
+    @classmethod
+    def short_to_full(cls, short_name):
+        return cls.__short_names[short_name].full_name if short_name in cls.__short_names.keys() else None
+
+    def default_method(self):
+        return self.default_config
+
+    def nearest_method(self, method: tuple[int, int, int]):
+        import math
+
+        min_method = self.default_method()
+
+        def dist(m):
+            return math.sqrt(((m[0] - method[0]) ** 2 ) + ((m[1] - method[1]) ** 2 ) + ((m[2] - method[2]) ** 2 ))
+
+        min = dist(min_method)
+
+        for m in self.configs[1:]:
+            d = dist(m)
+
+            if d < min:
+                min = d
+                min_method = m
+
+        return min_method
+
 class NexusDataTile(object):
     __data = None
     tile_id = None
