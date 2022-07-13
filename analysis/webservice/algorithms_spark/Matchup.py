@@ -426,10 +426,10 @@ class DomsPoint(object):
     @staticmethod
     def from_edge_point(edge_point):
         point = DomsPoint()
-        x, y = edge_point['longitude'], edge_point['latitude']
+        sp = wkt.loads(edge_point['point'])
 
-        point.longitude = x
-        point.latitude = y
+        point.longitude = sp.x
+        point.latitude = sp.y
 
         point.time = edge_point['time']
 
@@ -438,7 +438,7 @@ class DomsPoint(object):
         point.device = edge_point.get('device')
         point.file_url = edge_point.get('fileurl')
 
-        if 'code' in point.platform:
+        if (hasattr(point.platform, "__iter__") or hasattr(point.platform, "__getitem__")) and 'code' in point.platform:
             point.platform = edge_point.get('platform')['code']
 
         data_fields = [

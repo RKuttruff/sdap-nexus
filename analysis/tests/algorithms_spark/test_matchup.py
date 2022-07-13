@@ -93,6 +93,7 @@ def setup_mock_tile_service(tile):
     tile_service.get_min_time.return_value = 1627490285
     tile_service.get_max_time.return_value = 1627490285
     tile_service.mask_tiles_to_polygon.return_value = [tile]
+    tile_service.supports_direct_bounds_to_tile.return_value = False
     return tile_service_factory
 
 
@@ -100,7 +101,7 @@ def test_doms_point_is_pickleable():
     edge_point = {
         'id': 'argo-profiles-5903995(46, 0)',
         'time': '2012-10-15T14:24:04Z',
-        'point': '-33.467 29.728',
+        'point': 'POINT(-33.467 29.728)',
         'sea_water_temperature': 24.5629997253,
         'sea_water_temperature_depth': 2.9796258642,
         'wind_speed': None,
