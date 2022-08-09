@@ -1,0 +1,78 @@
+{{- if .Values.ingestion.enabled }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: collection-manager
+  name: collection-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collection-manager
+  template:
+    metadata:
+      labels:
+        app: collection-manager
+    spec:
+      containers:
+        - image: {{ .Values.ingestion.collectionManager.image }}
+          imagePullPolicy: Always
+          name: collection-manager
+          env:
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.rabbitmq.auth.username }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.rabbitmq.auth.password }}
+            - name: RABBITMQ_HOST
+              value: {{ .Values.rabbitmq.fullnameOverride }}
+            - name: COLLECTIONS_PATH
+              value: {{ include "nexus.collectionsConfig.mountPath" . }}/collections.yml
+            {{- if .Values.ingestion.history.solrEnabled }}
+            - name: HISTORY_URL
+              value: {{ include "nexus.urls.solr" . }}
+            {{- else }}
+            - name: HISTORY_PATH
+              value: {{ include "nexus.history.mountPath" . }}
+            {{- end }}
+            {{- if .Values.ingestion.granules.s3.bucket }}
+            - name: S3_BUCKET
+              value: {{ .Values.ingestion.granules.s3.bucket }}
+            {{- end }}
+            {{- range $name, $value := .Values.ingestion.granules.s3.awsCredsEnvs }}
+            - name: {{ $name }}
+              value: {{ $value }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: {{ .Values.ingestion.collectionManager.cpu }}
+              memory: {{ .Values.ingestion.collectionManager.memory }}
+            limits:
+              cpu: {{ .Values.ingestion.collectionManager.cpu }}
+              memory: {{ .Values.ingestion.collectionManager.memory }}
+          volumeMounts:
+            {{- if not .Values.ingestion.history.solrEnabled }}
+            - name: history-volume
+              mountPath: {{ include "nexus.history.mountPath" . }}
+            {{- end }}
+            - name: collections-config-volume
+              mountPath: {{ include "nexus.collectionsConfig.mountPath" . }}
+{{- if not .Values.ingestion.granules.s3.bucket }}
+{{ include "nexus.ingestion.dataVolumeMount" . | indent 12 }}
+{{- end }}
+      volumes:
+{{- if not .Values.ingestion.granules.s3.bucket }}
+{{ include "nexus.ingestion.dataVolume" . | indent 8 }}
+{{- end }}
+        - name: collections-config-volume
+          configMap:
+            name: {{ include "nexus.collectionsConfig.configmapName" . }}
+        {{- if not .Values.ingestion.history.solrEnabled }}
+        - name: history-volume
+          persistentVolumeClaim:
+            claimName: history-volume-claim
+        {{- end }}
+      restartPolicy: Always
+{{- end }}
+

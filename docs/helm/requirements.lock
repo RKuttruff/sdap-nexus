@@ -1,0 +1,15 @@
+dependencies:
+- name: nginx-ingress
+  repository: https://charts.helm.sh/stable
+  version: 1.28.2
+- name: rabbitmq
+  repository: https://charts.bitnami.com/bitnami
+  version: 8.24.13
+- name: solr
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.2.0
+- name: cassandra
+  repository: https://charts.bitnami.com/bitnami
+  version: 9.1.0
+digest: sha256:fea13cf80e6068e113ba57456e12c76b1dc7602d362b1372eae6dfb22bfea3fc
+generated: "2022-08-04T14:04:51.153846-07:00"

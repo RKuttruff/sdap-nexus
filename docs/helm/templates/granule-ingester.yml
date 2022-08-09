@@ -1,0 +1,63 @@
+{{- if .Values.ingestion.enabled }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: granule-ingester
+  name: granule-ingester
+spec:
+  replicas: {{ .Values.ingestion.granuleIngester.replicas }}
+  selector:
+    matchLabels:
+      app: granule-ingester
+  template:
+    metadata:
+      labels:
+        app: granule-ingester
+    spec:
+      containers:
+        - image: {{ .Values.ingestion.granuleIngester.image }}
+          imagePullPolicy: Always
+          name: granule-ingester
+          env:
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.rabbitmq.auth.username }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.rabbitmq.auth.password }}
+            - name: RABBITMQ_HOST
+              value: {{ .Values.rabbitmq.fullnameOverride }}
+            - name: CASSANDRA_CONTACT_POINTS
+              value: {{ include "nexus.urls.cassandra" . }}
+            - name: CASSANDRA_USERNAME
+              value: {{ include "nexus.credentials.cassandra.username" . }}
+            - name: CASSANDRA_PASSWORD
+              value: {{ include "nexus.credentials.cassandra.password" . }}
+            - name: SOLR_HOST_AND_PORT
+              value: http://nexus-solr:8983
+            {{ if .Values.ingestion.granuleIngester.maxConcurrency }}
+            - name: MAX_CONCURRENCY
+              value: "{{ .Values.ingestion.granuleIngester.maxConcurrency }}"
+            {{ end }}
+            {{- range $name, $value := .Values.ingestion.granules.s3.awsCredsEnvs }}
+            - name: {{ $name }}
+              value: {{ $value }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: {{ .Values.ingestion.granuleIngester.resources.requests.cpu }}
+              memory: {{ .Values.ingestion.granuleIngester.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.ingestion.granuleIngester.resources.limits.cpu }}
+              memory: {{ .Values.ingestion.granuleIngester.resources.limits.memory }}
+          volumeMounts:
+{{- if not .Values.ingestion.granules.s3.bucket }}
+{{ include "nexus.ingestion.dataVolumeMount" . | indent 12 }}
+{{- end }}
+      volumes:
+{{- if not .Values.ingestion.granules.s3.bucket }}
+{{ include "nexus.ingestion.dataVolume" . | indent 8 }}
+{{- end }}
+      restartPolicy: Always
+{{- end }}
+

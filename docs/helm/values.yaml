@@ -1,0 +1,178 @@
+onEarthProxyIP: ""
+insituAPI:
+  enabled: false
+rootWebpage:
+  enabled: false
+webapp:
+  enabled: false
+  distributed:
+    image: nexusjpl/nexus-webapp:distributed.0.4.1
+    ## Use any of the driver configuration options available at
+    ## https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/user-guide.md
+    driver:
+      cores: 1
+      coreLimit: "100m"
+      memory: "250m"
+    ## Use any of the executor configuration options available at
+    ## https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/user-guide.md
+    executor:
+      cores: 1
+      instances: 1
+      memory: "250m"
+## This section deals with the ingestion components of SDAP
+ingestion:
+  # If ingestion.enabled=true, collections-ingester and granule-ingester will be deployed
+  enabled: true
+  granuleIngester:
+    replicas: 1
+    image: nexusjpl/granule-ingester:0.1.6
+    resources:
+      requests:
+        cpu: 0.1
+        memory: 512Mi
+      limits:
+        cpu: 0.75
+        memory: 1Gi
+  collectionManager:
+    image: nexusjpl/collection-manager:0.1.6
+    ## cpu refers to both request and limit
+    cpu: 0.1
+    ## memory refers to both request and limit
+    memory: 100Mi
+  configOperator:
+    image: nexusjpl/config-operator:0.0.1
+  ## How to mount the granule files to ingest
+  granules:
+    ## mountPath is the path in the Collection Manager and Granule Ingester pods
+    ## where the granule files will be mounted.
+    ## IMPORTANT: the `path` property on all collections in the Collections Config file
+    ## should have mountPath as the root.
+    ## Example: if mountPath = /data, then every collection in the Collections
+    ## Config file should have something like:
+    ## path: /data/<some-directory>/<some-file-pattern>
+    mountPath: /data/granules/
+    ## Set nfsServer to an NFS host URL if you want to mount the granules from an NFS server.
+    ## For S3 or local filesystem ingestion, leave nfsServer blank.
+    nfsServer:
+    ## path is the path on either local filesystem or NFS mount at which
+    ## the granule files are stored. This will be ignored if S3 ingestion is enabled.
+    path: /Users/rileykk/dockerquickstart/data/avhrr-granules
+    s3:
+      ## If bucket has a value, S3 ingestion will be enabled (and nfsServer will be ignored even if it has a value).
+      bucket:
+      ## awsCredsEnvs can include any environment variables that contain AWS credentials
+      awsCredsEnvs: {}
+  ## Where to find the Collections Config file
+  ## ref: https://github.com/apache/incubator-sdap-ingester/tree/dev/collection_manager#the-collections-configuration-file
+  ## Either localDir should be set, or the git options, but not both.
+  collections:
+    createCrd: false
+    ## Name of a ConfigMap containing the Collections Config YAML.
+    ## Leave this blank if Git is enabled below.
+    configMap: collections-config
+    ## Load the Collections Config file from a git repository.
+    git:
+      ## This should be an https repository url of the form https://github.com/username/repo.git
+      url:
+      branch: master
+      # token: someToken
+  ## Where to store ingestion history
+  ## Defaults to Solr for ingestion history storage
+  history:
+    ## Whether to store ingestion history in a solr database instead of a filesystem directory
+    solrEnabled: true
+    ## storage class to use for ingestion history file only if solrEnabled = false
+    storageClass: hostpath
+## The values in this section are relevant if using Solr, Zookeeper, or Cassandra that were not deployed from this Helm chart
+external:
+  solrHostAndPort:
+  zookeeperHostAndPort:
+  cassandraHost:
+  cassandraUsername:
+  cassandraPassword:
+## Configuration values for the Solr and Zookeeper dependencies
+## ref: https://github.com/helm/charts/tree/master/incubator/solr
+## ref: https://github.com/helm/charts/tree/master/incubator/zookeeper
+solr:
+  enabled: true
+  initPodEnabled: true
+  image:
+    repository: nexusjpl/solr
+    tag: 8.11.1
+  replicaCount: 2
+  authentication:
+    enabled: false
+  volumeClaimTemplates:
+    storageClassName: hostpath
+    storageSize: 1Gi
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 0.25
+    limits:
+      memory: 2Gi
+      cpu: 0.75
+  zookeeper:
+    replicaCount: 3
+    persistence:
+      storageClass: hostpath
+    resources:
+      limits:
+        memory: 614Mi
+        cpu: 0.1
+      requests:
+        memory: 614Mi
+        cpu: 0.1
+## Configuration values for the nginx-ingress dependency
+## ref: https://github.com/helm/charts/tree/master/stable/nginx-ingress
+nginx-ingress:
+  enabled: false
+  controller:
+    scope:
+      enabled: true
+    kind: DaemonSet
+    service:
+      enabled: true
+      type: LoadBalancer
+  defaultBackend:
+    enabled: false
+## Configuration values for the rabbitmq dependency
+## ref: https://github.com/bitnami/charts/tree/master/bitnami/rabbitmq
+rabbitmq:
+  ## fullnameOverride sets the name of the RabbitMQ service
+  ## with which the ingestion components will communicate.
+  enabled: true
+  persistence:
+    storageClass: hostpath
+  fullnameOverride: rabbitmq
+  replicaCount: 1
+  auth:
+    username: guest
+    password: guest
+  ingress:
+    enabled: true
+## Configuration values for the rabbitmq dependency
+## ref: https://github.com/bitnami/charts/tree/master/bitnami/cassandra
+cassandra:
+  enabled: true
+  initDBConfigMap: init-cassandra
+  diagnosticMode:
+    enabled: false
+  dbUser:
+    user: cassandra
+    password: cassandra
+  cluster:
+    replicaCount: 1
+  jvm:
+    maxHeapSize: 3G
+    newHeapSize: 800M
+  persistence:
+    storageClass: hostpath
+    size: 4Gi
+  resources:
+    requests:
+      cpu: 1.2
+      memory: 4610Mi
+    limits:
+      cpu: 2
+      memory: 5Gi
