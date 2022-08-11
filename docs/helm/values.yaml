@@ -6,7 +6,7 @@ rootWebpage:
 webapp:
   enabled: false
   distributed:
-    image: nexusjpl/nexus-webapp:distributed.0.4.1
+    image: nexusjpl/nexus-webapp:distributed.0.4.5a49
     ## Use any of the driver configuration options available at
     ## https://github.com/GoogleCloudPlatform/spark-on-k8s-operator/blob/master/docs/user-guide.md
     driver:
@@ -25,7 +25,7 @@ ingestion:
   enabled: true
   granuleIngester:
     replicas: 1
-    image: nexusjpl/granule-ingester:0.1.6
+    image: nexusjpl/granule-ingester:0.1.6a30
     resources:
       requests:
         cpu: 0.1
@@ -34,7 +34,7 @@ ingestion:
         cpu: 0.75
         memory: 1Gi
   collectionManager:
-    image: nexusjpl/collection-manager:0.1.6
+    image: nexusjpl/collection-manager:0.1.6a14
     ## cpu refers to both request and limit
     cpu: 0.1
     ## memory refers to both request and limit
