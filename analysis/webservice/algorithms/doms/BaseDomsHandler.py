@@ -704,15 +704,73 @@ class DomsCAMLFormatter:
                 primary_histdata[pts]['data'].append(get_match_by_variable_name(r['primary'], caml_params['layer'])['variable_value'])
                 secondary_histdata[sts]['data'].append(secondary_match['variable_value'])
 
-            result['hist_test_p'] = primary_histdata
-            result['hist_test_s'] = secondary_histdata
+            bins = [-5, 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
 
-            result[keyname(CHART, n_chart)] = 'TBA - Need to figure out histogram format'
+            for d in primary_histdata:
+                hist, _ = np.histogram(primary_histdata[d]['data'], bins=bins, density=False)
+                h = []
+
+                for i in range(len(hist)):
+                    h.append([bins[i], int(hist[i])])
+
+                primary_histdata[d]['hist'] = copy.deepcopy(h)
+
+            for d in secondary_histdata:
+                hist, _ = np.histogram(secondary_histdata[d]['data'], bins=bins, density=False)
+                h = []
+
+                for i in range(len(hist)):
+                    h.append([bins[i], int(hist[i])])
+
+                secondary_histdata[d]['hist'] = copy.deepcopy(h)
+
+            head = primary_histdata[next(iter(primary_histdata))]['hist']
+
+            #result['hist_test_p'] = primary_histdata
+            #result['hist_test_s'] = secondary_histdata
+
+            data.append(head)
+
+            for d in primary_histdata:
+                d_hist = [d]
+
+                for bin in primary_histdata[d]['hist']:
+                    d_hist.append(bin)
+
+                data.append([d_hist])
+
+            result[keyname(CHART, n_chart)] = {
+                "object": ["layer"],
+                "type": "histogram",
+                "title": "Frequency Distribution over Time",
+                "xAxis_label": f"{result[keyname(VAR, 0)]['name']} ({result[keyname(VAR, 0)]['units']})",
+                "yAxis_label": "frequency (count)",
+                "xySeries_data": copy.deepcopy(data),
+            }
 
             n_chart += 1
             data.clear()
 
-            result[keyname(CHART, n_chart)] = 'TBA - Need to figure out histogram format'
+            data.append(head)
+
+            for d in secondary_histdata:
+                d_hist = [d]
+
+                for bin in secondary_histdata[d]['hist']:
+                    d_hist.append(bin)
+
+                data.append([d_hist])
+
+            result[keyname(CHART, n_chart)] = {
+                "object": ["feature"],
+                "type": "histogram",
+                "title": "Frequency Distribution over Time",
+                "xAxis_label": f"{result[keyname(VAR, 1)]['name']} ({result[keyname(VAR, 1)]['units']})",
+                "yAxis_label": "frequency (count)",
+                "xySeries_data": copy.deepcopy(data),
+            }
+
+            data.clear()
 
             for r in results:
                 secondary = None
