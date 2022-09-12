@@ -726,9 +726,6 @@ class DomsCAMLFormatter:
 
             head = primary_histdata[next(iter(primary_histdata))]['hist']
 
-            #result['hist_test_p'] = primary_histdata
-            #result['hist_test_s'] = secondary_histdata
-
             data.append(head)
 
             for d in primary_histdata:
