@@ -557,6 +557,9 @@ class DomsCAMLFormatter:
             m = [m for m in matches if m['cf_variable_name'] == variable_name]
             return m[0]
 
+        def round_down_day(dt):
+            return datetime(*dt.timetuple()[:3])
+
         query = {}
         result = {}
         caml_params = params['caml_params']
@@ -664,6 +667,45 @@ class DomsCAMLFormatter:
 
             n_chart += 1
             data.clear()
+
+            primary_histdata = {}
+            secondary_histdata = {}
+
+            for r in results:
+                secondary = None
+                secondary_match = None
+
+                for s in r['matches']:
+                    try:
+                        secondary_match = get_match_by_variable_name(s['secondary'], caml_params['feature'])
+                        secondary = s
+                        break
+                    except:
+                        pass
+
+                if secondary is None:
+                    continue
+
+                pts = datetime_to_iso(round_down_day(r['time']))
+                sts = datetime_to_iso(round_down_day(secondary['time']))
+
+                if pts not in primary_histdata:
+                    primary_histdata[pts] = {
+                        'data': [],
+                        'hist': None
+                    }
+
+                if sts not in secondary_histdata:
+                    secondary_histdata[sts] = {
+                        'data': [],
+                        'hist': None
+                    }
+
+                primary_histdata[pts]['data'].append(get_match_by_variable_name(r['primary'], caml_params['layer'])['variable_value'])
+                secondary_histdata[sts]['data'].append(secondary_match['variable_value'])
+
+            result['hist_test_p'] = primary_histdata
+            result['hist_test_s'] = secondary_histdata
 
             result[keyname(CHART, n_chart)] = 'TBA - Need to figure out histogram format'
 
