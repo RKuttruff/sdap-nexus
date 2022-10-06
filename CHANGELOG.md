@@ -19,10 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added domsresults endpoint to openapi spec
 - Added markdown table to matchup `platform` param in openapi spec
 - SDAP-400: Added NCAR insitu api to matchup
+- SDAP-405: Added SPURS AWS insitu api to matchup and new platform values to OpenAPI matchup spec
 ### Changed
 - SDAP-390: Changed `/doms` to `/cdms` and `doms_reader.py` to `cdms_reader.py`
 - domslist endpoint points to AWS insitu instead of doms insitu
 - Matchup returns numSecondary and numPrimary counts rather than insitu/gridded
+- Bumped ingress timeout in Helm chart to reflect AWS gateway timeout
 ### Deprecated
 ### Removed
 - removed dropdown from matchup doms endpoint secondary param
@@ -46,4 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed import error causing `/timeSeriesSpark` queries to fail.
 - Fixed bug where domsresults no longer worked after successful matchup
 - Fixed certificate error in Dockerfile
+- SDAP-403: Remote timeout fix and HofMoeller bug fix
 ### Security
+
+
