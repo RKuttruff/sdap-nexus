@@ -59,5 +59,15 @@ spec:
 {{ include "nexus.ingestion.dataVolume" . | indent 8 }}
 {{- end }}
       restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingester-scaling
+data:
+  maxReplicas: {{ include .Values.ingestion.granuleIngester.maxReplicas }}
+
 {{- end }}
 

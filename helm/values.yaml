@@ -32,6 +32,7 @@ ingestion:
 
   granuleIngester:
     replicas: 2
+    maxReplicas: 2
     image: nexusjpl/granule-ingester:0.1.6
 
     ## cpu refers to both request and limit
