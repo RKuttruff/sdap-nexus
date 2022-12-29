@@ -66,8 +66,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ingester-scaling
+  namespace: {{ .Release.Namespace }}
 data:
-  maxReplicas: {{ include .Values.ingestion.granuleIngester.maxReplicas }}
+  maxReplicas: {{ .Values.ingestion.granuleIngester.maxReplicas }}
 
 {{- end }}
 
