@@ -42,6 +42,50 @@ def get_cluster_status():
         return False
 
 
+def add_field(schema_url, field_name, field_type, indexed=True, stored=True):
+    logging.info(f'Adding new field: {field_name} of type {field_type}. indexed={indexed}, stored={stored}')
+
+    payload_dict = {
+        'add-field': {
+            'name': field_name,
+            'type': field_type,
+            'indexed': indexed,
+            'stored': stored
+        }
+    }
+
+    payload_str = json.dumps(payload_dict).encode('utf-8')
+
+    response = requests.post(url=schema_url, data=payload_str)
+
+    if response.status_code < 400:
+        logging.info("Success.")
+    else:
+        logging.error(f"Error creating field '{field_name}': {response.text}")
+
+
+def add_dynamic_field(schema_url, field_name, field_type, indexed=True, stored=True):
+    logging.info(f'Adding new dynamic field: {field_name} of type {field_type}. indexed={indexed}, stored={stored}')
+
+    payload_dict = {
+        'add-dynamic-field': {
+            'name': field_name,
+            'type': field_type,
+            'indexed': indexed,
+            'stored': stored
+        }
+    }
+
+    payload_str = json.dumps(payload_dict).encode('utf-8')
+
+    response = requests.post(url=schema_url, data=payload_str)
+
+    if response.status_code < 400:
+        logging.info("Success.")
+    else:
+        logging.error(f"Error creating dynamic field '{field_name}': {response.text}")
+
+
 logging.info("Attempting to aquire lock from {}".format(SDAP_ZK_SOLR))
 zk_host, zk_chroot = SDAP_ZK_SOLR.split('/')
 zk = KazooClient(hosts=zk_host)
@@ -125,17 +169,27 @@ try:
             else:
                 logging.error("Error creating field type 'geo': {}".format(field_type_response.text))
 
-            field_payload = json.dumps({
-                "add-field": {
-                    "name": "geo",
-                    "type": "geo"}})
-            logging.info("Creating field 'geo'...")
-            field_response = requests.post(url=schema_api, data=field_payload)
-            if field_response.status_code < 400:
-                logging.info("Success.")
-            else:
-                logging.error("Error creating field 'geo': {}".format(field_response.text))
+            add_field(schema_api, 'table_s', 'string', False, False)
+            add_field(schema_api, 'geo', 'geo', True, False)
+            add_field(schema_api, 'solr_id_s', 'string', False, False)
+            add_field(schema_api, 'selectionSpec_s', 'string', False, True)
+            add_field(schema_api, 'dataset_s', 'string', True, True)
+            add_field(schema_api, 'granule_s', 'string', True, True)
+            add_field(schema_api, 'tile_var_name_ss', 'strings', False, True)
+            add_field(schema_api, 'day_of_year_i', 'pint', True, False)
+            add_field(schema_api, 'tile_min_lon', 'pdouble', True, True)
+            add_field(schema_api, 'tile_max_lon', 'pdouble', True, True)
+            add_field(schema_api, 'tile_min_lat', 'pdouble', True, True)
+            add_field(schema_api, 'tile_max_lat', 'pdouble', True, True)
+            add_field(schema_api, 'tile_depth', 'pdouble', False, False)
+            add_field(schema_api, 'tile_min_time_dt', 'pdate', True, True)
+            add_field(schema_api, 'tile_max_time_dt', 'pdate', True, True)
+            add_field(schema_api, 'tile_min_val_d', 'pdouble', False, True)
+            add_field(schema_api, 'tile_max_val_d', 'pdouble', False, True)
+            add_field(schema_api, 'tile_avg_val_d', 'pdouble', False, True)
+            add_field(schema_api, 'tile_count_i', 'pint', True, True)
 
+            add_dynamic_field(schema_api, '*.tile_standard_name_s', 'string', False, True)
 finally:
     zk.stop()
     zk.close()
