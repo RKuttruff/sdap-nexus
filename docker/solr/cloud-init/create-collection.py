@@ -75,7 +75,7 @@ def add_field(schema_url, field_name, field_type, indexed=True, stored=True, **k
     try:
         field_properties['uninvertible'] = kwargs['uninvertible']
     except KeyError:
-        field_properties['uninvertible'] = True
+        field_properties['uninvertible'] = False
 
     try:
         field_properties['termVectors'] = kwargs['termVectors']
@@ -127,8 +127,10 @@ def add_field(schema_url, field_name, field_type, indexed=True, stored=True, **k
 
     payload_str = json.dumps(payload_dict).encode('utf-8')
 
-    logger.info(f'Adding new field: {field_name} of type {field_type} with properties: \n'
-                 "\n".join(["{} = {}".format(key, field_properties[key]) for key in field_properties if key not in ['name', 'type']]))
+    properties_str = "\n".join(
+        [" - {} = {}".format(key, field_properties[key]) for key in field_properties if key not in ['name', 'type']])
+
+    logger.info(f'Adding new field: {field_name} of type {field_type} with properties: \n{properties_str}')
 
     response = requests.post(url=schema_url, data=payload_str)
 
@@ -169,7 +171,7 @@ def add_dynamic_field(schema_url, field_name, field_type, indexed=True, stored=T
     try:
         field_properties['uninvertible'] = kwargs['uninvertible']
     except KeyError:
-        field_properties['uninvertible'] = True
+        field_properties['uninvertible'] = False
 
     try:
         field_properties['termVectors'] = kwargs['termVectors']
@@ -221,8 +223,9 @@ def add_dynamic_field(schema_url, field_name, field_type, indexed=True, stored=T
 
     payload_str = json.dumps(payload_dict).encode('utf-8')
 
-    logger.info(f'Adding new field: {field_name} of type {field_type} with properties: \n'
-                 "\n".join(["{} = {}".format(key, field_properties[key]) for key in field_properties if key not in ['name', 'type']]))
+    properties_str = "\n".join([" - {} = {}".format(key, field_properties[key]) for key in field_properties if key not in ['name', 'type']])
+
+    logger.info(f'Adding new dynamic field: {field_name} of type {field_type} with properties: \n{properties_str}')
 
     response = requests.post(url=schema_url, data=payload_str)
 
@@ -317,19 +320,19 @@ try:
 
             logger.info(f'Now adding fields and dynamic fields with schema URL: {schema_api}')
 
-            add_field(schema_api, 'table_s',             'string',  False, False)
+            # add_field(schema_api, 'table_s',             'string',  False, False)
             add_field(schema_api, 'geo',                 'geo',     True,  False)
-            add_field(schema_api, 'solr_id_s',           'string',  False, False)
+            # add_field(schema_api, 'solr_id_s',           'string',  False, False)
             add_field(schema_api, 'selectionSpec_s',     'string',  False, True)
             add_field(schema_api, 'dataset_s',           'string',  True,  True)
             add_field(schema_api, 'granule_s',           'string',  True,  True)
-            add_field(schema_api, 'tile_var_name_ss',    'strings', False, True)
+            add_field(schema_api, 'tile_var_name_ss',    'strings', False, True,  multiValued=True)
             add_field(schema_api, 'day_of_year_i',       'pint',    True,  False)
             add_field(schema_api, 'tile_min_lon',        'pdouble', True,  True)
             add_field(schema_api, 'tile_max_lon',        'pdouble', True,  True)
             add_field(schema_api, 'tile_min_lat',        'pdouble', True,  True)
             add_field(schema_api, 'tile_max_lat',        'pdouble', True,  True)
-            add_field(schema_api, 'tile_depth',          'pdouble', False, False)
+            # add_field(schema_api, 'tile_depth',          'pdouble', False, False)
             add_field(schema_api, 'tile_min_time_dt',    'pdate',   True,  True)
             add_field(schema_api, 'tile_max_time_dt',    'pdate',   True,  True)
             add_field(schema_api, 'tile_min_val_d',      'pdouble', False, True)
