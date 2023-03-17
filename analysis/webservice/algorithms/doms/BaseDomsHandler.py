@@ -20,6 +20,7 @@ import json
 from datetime import datetime
 import time
 import itertools
+import gzip
 import importlib_metadata
 from collections import defaultdict
 from decimal import Decimal
@@ -84,6 +85,8 @@ class DomsEncoder(json.JSONEncoder):
 
 
 class DomsQueryResults(NexusResults):
+    COMPRESSION_THRESHOLD = 250000
+
     def __init__(self, results=None, args=None, bounds=None, count=None, details=None, computeOptions=None,
                  executionId=None, status_code=200):
         NexusResults.__init__(self, results=results, meta=None, stats=None, computeOptions=computeOptions,
@@ -96,9 +99,29 @@ class DomsQueryResults(NexusResults):
 
     def toJson(self):
         bounds = self.__bounds.toMap() if self.__bounds is not None else {}
-        return json.dumps(
-            {"executionId": self.__executionId, "data": self.results(), "params": self.__args, "bounds": bounds,
-             "count": self.__count, "details": self.__details}, indent=4, cls=DomsEncoder)
+
+        compress = False
+
+        if self.__details:
+            if 'numPrimaryMatched' in self.__details and 'numSecondaryMatched' in self.__details:
+                num_points = self.__details['numPrimaryMatched'] + self.__details['numSecondaryMatched']
+
+                compress = num_points >= DomsQueryResults.COMPRESSION_THRESHOLD
+
+        if not compress:
+            return json.dumps(
+                {"executionId": self.__executionId, "data": self.results(), "params": self.__args, "bounds": bounds,
+                 "count": self.__count, "details": self.__details}, indent=4, cls=DomsEncoder)
+        else:
+            buffer = io.BytesIO()
+            with gzip.open(buffer, 'wt', encoding='ascii') as zip:
+                json.dump(
+                    {"executionId": self.__executionId, "data": self.results(), "params": self.__args, "bounds": bounds,
+                     "count": self.__count, "details": self.__details}, zip, cls=DomsEncoder)
+
+            buffer.seek(0)
+            return buffer.read()
+
 
     def toCSV(self):
         return DomsCSVFormatter.create(self.__executionId, self.results(), self.__args, self.__details)
