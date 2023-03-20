@@ -26,6 +26,13 @@ class NexusJSONRenderer(object):
         tornado_handler.set_header("Content-Type", "application/json")
         try:
             result_str = result.toJson()
+
+            if isinstance(result_str, bytes):
+                tornado_handler.set_header("Content-Type", "application/gzip")
+                tornado_handler.set_header("Content-Disposition",
+                                           "attachment; filename=\"%s\"" % self.request.get_argument('filename',
+                                                                                                      "matchup.gz"))
+
             tornado_handler.write(result_str)
             tornado_handler.finish()
         except AttributeError:
