@@ -33,6 +33,9 @@ class CapabilitiesListCalcHandlerImpl(NexusCalcHandler):
         capabilities = []
 
         for capability in AVAILABLE_HANDLERS:
+            if hasattr(capability, 'suppress') and capability.suppress:
+                continue
+
             capabilityDef = {
                 "name": capability.name,
                 "path": capability.path,
