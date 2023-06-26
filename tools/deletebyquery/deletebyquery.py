@@ -20,17 +20,19 @@ import logging
 import uuid
 from random import sample
 
+from typing import Optional
+
 from cassandra.auth import PlainTextAuthProvider
 import cassandra.concurrent
 from cassandra.cluster import Cluster
 from cassandra.policies import RoundRobinPolicy, TokenAwarePolicy
-from solrcloudpy import SolrConnection, SearchOptions
+from solrcloudpy import SolrConnection, SearchOptions, SolrCollection
 
 from six.moves import input
 
-solr_connection = None
-solr_collection = None
-SOLR_UNIQUE_KEY = None
+solr_connection: Optional[SolrConnection] = None
+solr_collection: Optional[SolrCollection] = None
+SOLR_UNIQUE_KEY: Optional[str] = None
 
 cassandra_cluster = None
 cassandra_session = None
@@ -93,13 +95,15 @@ def delete_by_query(args):
 
     query.commonparams.rows(args.rows)
 
-    if check_query(query):
+    if check_query(query, args):
         logging.info("Collecting tiles ....")
         solr_docs = do_solr_query(query)
 
         if confirm_delete(len(solr_docs)):
             deleted_ids = do_delete(solr_docs, query)
             logging.info("Deleted tile IDs %s" % json.dumps([str(doc_id) for doc_id in deleted_ids], indent=2))
+            if not args.keep_granules:
+                delete_from_granules(query, args)
         else:
             logging.info("Exiting")
             return
@@ -119,13 +123,23 @@ def confirm_delete(num_found):
     return do_continue == 'y'
 
 
-def check_query(query):
+def check_query(query, args):
     solr_response = solr_collection.search(query)
 
     num_found = solr_response.result.response.numFound
 
     if num_found == 0:
         logging.info("Query returned 0 results")
+
+        if not args.keep_granules:
+            do_continue = input("Do you still want to run the query against the granules collection? [y]/n: ")
+
+            while do_continue not in ['y', 'n', '']:
+                do_continue = input("Do you still want to run the query against the granules collection? [y]/n: ")
+
+            if do_continue == 'y' or do_continue == '':
+                delete_from_granules(query, args)
+
         return False
 
     do_continue = input("Query found %s matching documents. Continue? [y]/n/(s)ample: " % num_found)
@@ -194,6 +208,14 @@ def delete_from_solr(query):
     solr_collection.commit()
 
 
+def delete_from_granules(query, args):
+    global solr_connection
+    granule_collection = solr_connection[args.granules_collection]
+
+    granule_collection.delete(query, commit=False)
+    granule_collection.commit()
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Delete data from NEXUS using a Solr Query',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -208,6 +230,19 @@ def parse_args():
                         required=False,
                         default='nexustiles',
                         metavar='nexustiles')
+
+    parser.add_argument('--granule-collection',
+                        help='The name of the SOLR collection for ingested granules.',
+                        required=False,
+                        default='nexusgranules',
+                        metavar='nexusgranules',
+                        dest='granules_collection')
+
+    parser.add_argument('--keep-granules',
+                        help='Do not delete related entries from the granules collection.',
+                        action='store_true',
+                        dest="keep_granules"
+                        )
 
     parser.add_argument('--solrIdField',
                         help='The name of the unique ID field for this collection.',
