@@ -212,6 +212,22 @@ def delete_from_granules(query, args):
     global solr_connection
     granule_collection = solr_connection[args.granules_collection]
 
+    solr_response = granule_collection.search(query)
+
+    num_found = solr_response.result.response.numFound
+
+    if num_found == 0:
+        logging.info('No corresponding granules found to delete')
+        return
+
+    do_continue = input(f"Found {num_found:,} granules corresponding to your query. Continue? [y]/n: ")
+
+    while do_continue not in ['y', 'n', '']:
+        do_continue = input(f"Found {num_found:,} granules corresponding to your query. Continue? [y]/n: ")
+
+    if do_continue == 'n':
+        return
+
     granule_collection.delete(query, commit=False)
     granule_collection.commit()
 
