@@ -96,7 +96,7 @@ class DomsResultsRetrievalHandler(BaseDomsHandler.BaseDomsQueryCalcHandler):
     singleton = True
 
     def __init__(self, tile_service_factory, **kwargs):
-        BaseDomsHandler.BaseDomsQueryCalcHandler.__init__(self, tile_service_factory)
+        BaseDomsHandler.BaseDomsQueryCalcHandler.__init__(self, tile_service_factory, desired_projection='swath')
         self.log = logging.getLogger(__name__)
 
     def parse_arguments(self, request):
