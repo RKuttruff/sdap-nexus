@@ -1,0 +1,17 @@
+name: proto-to-zarr
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.9
+  - cassandra-driver==3.24.0
+  - tqdm
+  # - solrcloudpy==4.0.1
+  - xarray
+  #- xarray>=2023.8.0
+  - s3fs==2022.5.0
+  - fsspec==2022.5.0
+  - aiobotocore>=2.3.0,<2.4
+  - dask
+  - zarr>=2.11
+  - numpy
+  - boto3
