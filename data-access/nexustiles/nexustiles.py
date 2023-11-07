@@ -742,6 +742,9 @@ class NexusTileService:
         :return: A list tiles with data masked to specified time range
         """
         for tile in tiles:
+            if tile.elevation is None:
+                continue
+
             tile.elevation = ma.masked_outside(tile.elevation, min_e, max_e)
 
             # Or together the masks of the individual arrays to create the new mask
