@@ -104,8 +104,40 @@ try:
                 # Some error occured while creating the collection
                 raise RuntimeError("Could not create collection. Received response: {}".format(create_response))
 
-            schema_api = "{}nexustiles/schema".format(SDAP_SOLR_URL)
+        schema_api = "{}nexustiles/schema".format(SDAP_SOLR_URL)
+        collection_schema = requests.get(schema_api).json()
 
+        collection_fields = collection_schema['schema'].get('fields')
+        collection_field_types = collection_schema['schema'].get('fieldTypes')
+        collection_dynamic_fields = collection_schema['schema'].get('dynamicFields')
+
+        def _exists_or_none(schema: list, name: str):
+            if schema is None:
+                return True
+
+            for e in schema:
+                if 'name' in e and e['name'] == name:
+                    return True
+
+            return False
+
+        def add_field(schema_api, field_list, name, type):
+            if _exists_or_none(field_list, name):
+                logging.info(f'Field {name} already exists')
+                return
+
+            field_payload = json.dumps({
+                "add-field": {
+                    "name": name,
+                    "type": type}})
+            logging.info(f"Creating {type} field '{name}'...")
+            field_response = requests.post(url=schema_api, data=field_payload)
+            if field_response.status_code < 400:
+                logging.info("Success.")
+            else:
+                logging.error(f"Error creating field '{name}': {field_response.text}")
+
+        if not _exists_or_none(collection_fields, 'geo'):
             field_type_payload = json.dumps({
                 "add-field-type": {
                     "name": "geo",
@@ -124,27 +156,16 @@ try:
                 logging.info("Success.")
             else:
                 logging.error("Error creating field type 'geo': {}".format(field_type_response.text))
+        else:
+            logging.info(f'Field type geo already exists')
 
-            def add_field(schema_api, name, type):
-                field_payload = json.dumps({
-                    "add-field": {
-                        "name": name,
-                        "type": type}})
-                logging.info(f"Creating {type} field '{name}'...")
-                field_response = requests.post(url=schema_api, data=field_payload)
-                if field_response.status_code < 400:
-                    logging.info("Success.")
-                else:
-                    logging.error(f"Error creating field '{name}': {field_response.text}")
-
-            add_field(schema_api, 'geo', 'geo')
-            add_field(schema_api, 'tile_max_lat', 'pdouble')
-            add_field(schema_api, 'tile_min_lat', 'pdouble')
-            add_field(schema_api, 'tile_max_lon', 'pdouble')
-            add_field(schema_api, 'tile_min_lon', 'pdouble')
-            add_field(schema_api, 'tile_min_elevation_d', 'pdouble')
-            add_field(schema_api, 'tile_max_elevation_d', 'pdouble')
-
+        add_field(schema_api, collection_fields, 'geo', 'geo')
+        add_field(schema_api, collection_fields, 'tile_max_lat', 'pdouble')
+        add_field(schema_api, collection_fields, 'tile_min_lat', 'pdouble')
+        add_field(schema_api, collection_fields, 'tile_max_lon', 'pdouble')
+        add_field(schema_api, collection_fields, 'tile_min_lon', 'pdouble')
+        add_field(schema_api, collection_fields, 'tile_min_elevation_d', 'pdouble')
+        add_field(schema_api, collection_fields, 'tile_max_elevation_d', 'pdouble')
 finally:
     zk.stop()
     zk.close()
