@@ -39,6 +39,16 @@ INSITU_PROVIDER_MAP = [
         ]
     },
     {
+        'name': 'Saildrone_test',
+        'projects': [
+            {
+                'short_name': 'AC2019-JPL',
+                'name': 'antarctic_circumnavigation_2019',
+                'platforms': ['3B']
+            }
+        ]
+    },
+    {
         'name': 'Florida State University, COAPS',
         'projects': [
             {
