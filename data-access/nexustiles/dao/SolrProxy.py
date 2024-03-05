@@ -311,7 +311,7 @@ class SolrProxy(object):
             elevation_clause = "(" \
                           "tile_min_elevation_d:[%s TO %s] " \
                           "OR tile_max_elevation_d:[%s TO %s] " \
-                          "OR (tile_min_elevation_d:[* TO %s] AND tile_max_elevation_d:[%s TO *])" \
+                          "OR (tile_min_elevation_d:[* TO %s] AND tile_max_elevation_d:[%s TO *]) " \
                           ")" % (
                               min_elevation, max_elevation,
                               min_elevation, max_elevation,
@@ -335,6 +335,13 @@ class SolrProxy(object):
                                max_elevation,
                                max_elevation
                            )
+            additionalparams['fq'].append(elevation_clause)
+        else:
+            elevation_clause = "(" \
+                           "tile_min_elevation_d:[0 TO 0] " \
+                           "OR tile_max_elevation_d:[0 TO 0] " \
+                           "OR tile_depth:[0 TO 0] " \
+                           ")"
             additionalparams['fq'].append(elevation_clause)
 
         self._merge_kwargs(additionalparams, **kwargs)
