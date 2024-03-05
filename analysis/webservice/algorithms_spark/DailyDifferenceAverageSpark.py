@@ -121,13 +121,21 @@ class DailyDifferenceAverageNexusImplSpark(NexusCalcSparkHandler):
 
         start_seconds_from_epoch = int((start_time - EPOCH).total_seconds())
         end_seconds_from_epoch = int((end_time - EPOCH).total_seconds())
+        
+        min_elevation, max_elevation = request.get_elevation_args()
+
+        if (min_elevation and max_elevation) and min_elevation > max_elevation:
+            raise NexusProcessingException(
+                reason='Min elevation must be less than or equal to max elevation',
+                code=400
+            )
 
         plot = request.get_boolean_arg("plot", default=False)
 
-        return bounding_polygon, dataset, climatology, start_time, start_seconds_from_epoch, end_time, end_seconds_from_epoch, plot
+        return bounding_polygon, dataset, climatology, start_time, start_seconds_from_epoch, end_time, end_seconds_from_epoch, plot, min_elevation, max_elevation
 
     def calc(self, request, **args):
-        bounding_polygon, dataset, climatology, start_time, start_seconds_from_epoch, end_time, end_seconds_from_epoch, plot = self.parse_arguments(
+        bounding_polygon, dataset, climatology, start_time, start_seconds_from_epoch, end_time, end_seconds_from_epoch, plot, min_elevation, max_elevation = self.parse_arguments(
             request)
 
         self.log.debug("Querying for tiles in search domain")
