@@ -309,7 +309,8 @@ class SolrProxy(object):
         
         if min_elevation and max_elevation and min_elevation == max_elevation:
             elevation_clause = "(" \
-                          "tile_min_elevation_d:[%s TO %s] " \
+                          "tile_min_elevation_d:[* TO %s] " \
+                          "AND tile_max_elevation_d:{%s TO *]" \
                           ")" % (
                               min_elevation, max_elevation,
                           )
