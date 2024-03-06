@@ -213,7 +213,7 @@ class VarianceNexusSparkHandlerImpl(NexusCalcSparkHandler):
         self.log.info('Using {} partitions'.format(spark_nparts))
 
         rdd = self._sc.parallelize(nexus_tiles_spark, spark_nparts)
-        sum_count_part = rdd.map(partial(self._map, self._tile_service_factory))
+        sum_count_part = rdd.map(partial(self._map, self._tile_service_factory, min_elevation, max_elevation))
         sum_count = \
             sum_count_part.combineByKey(lambda val: val,
                                         lambda x, val: (x[0] + val[0],
