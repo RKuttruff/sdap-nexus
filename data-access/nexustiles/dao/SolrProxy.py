@@ -307,7 +307,14 @@ class SolrProxy(object):
         min_elevation = kwargs['min_elevation'] if 'min_elevation' in kwargs else None
         max_elevation = kwargs['max_elevation'] if 'max_elevation' in kwargs else None
         
-        if min_elevation and max_elevation:
+        if min_elevation and max_elevation and min_elevation == max_elevation:
+            elevation_clause = "(" \
+                          "tile_min_elevation_d:[%s TO %s] " \
+                          ")" % (
+                              min_elevation, max_elevation,
+                          )
+            additionalparams['fq'].append(elevation_clause)
+        elif min_elevation and max_elevation:
             elevation_clause = "(" \
                           "tile_min_elevation_d:[%s TO %s] " \
                           "OR tile_max_elevation_d:[%s TO %s] " \
