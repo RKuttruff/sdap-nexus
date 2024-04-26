@@ -241,7 +241,7 @@ class VarianceNexusSparkHandlerImpl(NexusCalcSparkHandler):
         self.log.info('Using {} partitions'.format(spark_nparts))
         rdd = self._sc.parallelize(nexus_tiles_spark, spark_nparts)
 
-        anomaly_squared_part = rdd.map(partial(self._calc_variance, min_elevation, max_elevation, self._tile_service_factory))
+        anomaly_squared_part = rdd.map(partial(self._calc_variance, self._tile_service_factory, min_elevation, max_elevation))
         anomaly_squared = \
             anomaly_squared_part.combineByKey(lambda val: val,
                                         lambda x, val: (x[0] + val[0],
