@@ -188,9 +188,9 @@ class MaximaMinimaSparkHandlerImpl(NexusCalcSparkHandler):
                                                               self._maxLonCent))
 
         # Create array of tuples to pass to Spark map function
-        nexus_tiles_spark = [[self._find_tile_bounds(t),
+        nexus_tiles_spark = np.array([[self._find_tile_bounds(t),
                               self._startTime, self._endTime,
-                              self._ds] for t in nexus_tiles]
+                              self._ds] for t in nexus_tiles], dtype='object')
 
         # Remove empty tiles (should have bounds set to None)
         bad_tile_inds = np.where([t[0] is None for t in nexus_tiles_spark])[0]
@@ -213,7 +213,7 @@ class MaximaMinimaSparkHandlerImpl(NexusCalcSparkHandler):
         self.log.info('Using {} partitions'.format(spark_nparts))
 
         rdd = self._sc.parallelize(nexus_tiles_spark, spark_nparts)
-        max_min_part = rdd.map(partial(self._map, min_elevation, max_elevation, self._tile_service_factory))
+        max_min_part = rdd.map(partial(self._map, self._tile_service_factory, min_elevation, max_elevation))
         max_min_count = \
             max_min_part.combineByKey(lambda val: val,
                                         lambda x, val: (np.maximum(x[0], val[0]),   # Max
