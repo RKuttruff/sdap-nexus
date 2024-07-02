@@ -143,6 +143,8 @@ class DailyDifferenceAverageNexusImplSpark(NexusCalcSparkHandler):
         tile_ids = [tile.tile_id for tile in
                     self._get_tile_service().find_tiles_in_polygon(bounding_polygon, dataset,
                                                                    start_seconds_from_epoch, end_seconds_from_epoch,
+                                                                   min_elevation=min_elevation,
+                                                                   max_elevation=max_elevation,
                                                                    fetch_data=False, fl='id',
                                                                    sort=['tile_min_time_dt asc', 'tile_min_lon asc',
                                                                          'tile_min_lat asc'], rows=5000)]
