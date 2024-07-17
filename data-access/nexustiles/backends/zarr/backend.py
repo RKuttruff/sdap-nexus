@@ -180,6 +180,7 @@ class ZarrBackend(AbstractTileService):
             try:
                 logger.info(f'Refreshing zarr dataset {self._name} at {self.__path}')
                 self.__ds = self.__open_ds()
+                self._last_updated = datetime.now()
             except Exception as e:
                 logger.error('Backend update failed')
                 logger.exception(e)

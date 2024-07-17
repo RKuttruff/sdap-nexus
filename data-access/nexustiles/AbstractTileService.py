@@ -19,10 +19,13 @@ from functools import reduce
 import numpy as np
 import numpy.ma as ma
 
+from datetime import datetime
+
 
 class AbstractTileService(ABC):
     def __init__(self, dataset_name):
         self._name = dataset_name
+        self._last_updated = datetime.now()
 
     def heartbeat(self) -> bool:
         return True
@@ -37,6 +40,9 @@ class AbstractTileService(ABC):
         @return: True if valid and successful, False if dataset is now unreachable and therefore should not be used
         """
         return True
+
+    def last_updated(self):
+        return self._last_updated
 
     @abstractmethod
     def get_dataseries_list(self, simple=False):
