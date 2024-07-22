@@ -211,6 +211,9 @@ class NexusTileService:
                             NexusTileService.backends[collection]['backend'].last_updated():
                         logger.info(f'No need to resave {collection} as it has not changed since last save')
                         continue
+                    else:
+                        logger.info('Ensuring dataset is up to date, valid and loaded')
+                        NexusTileService.backends[collection]['backend'].update(load=True)
 
                     logger.info(f'Trying to save backend for collection {collection}')
                     path = os.path.join(NexusTileService.__temp_dir.name, f'{collection}.bknd')

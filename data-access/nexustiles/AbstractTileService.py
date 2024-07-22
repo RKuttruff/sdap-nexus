@@ -30,12 +30,13 @@ class AbstractTileService(ABC):
     def heartbeat(self) -> bool:
         return True
 
-    def update(self, force: bool=False) -> bool:
+    def update(self, force: bool = False, load: bool = False) -> bool:
         """
         If applicable, verify the underlying connection(s) are still open and valid, replacing them if necessary
 
         Default implementation is to do nothing and assume all is valid.
 
+        @param load:
         @param force: Forcibly replace underlying connections.
         @return: True if valid and successful, False if dataset is now unreachable and therefore should not be used
         """

@@ -90,7 +90,20 @@ class ZarrBackend(AbstractTileService):
         if config.get('verified', False):
             self.__corrections = []
 
-        self.__ds: xr.Dataset = self.__open_ds()
+        self.__ds_instance: xr.Dataset = self.__open_ds()
+        self.__open = True
+
+    @property
+    def __ds(self):
+        if not self.__open:
+            logger.info('Existing dataset instance has been closed, reopening...')
+            self.__ds = self.__open_ds()
+            self.__open = True
+        return self.__ds_instance
+
+    @__ds.setter
+    def __ds(self, ds):
+        self.__ds_instance = ds
 
     def __open_ds(self) -> xr.Dataset:
         if self.__store_type in ['', 'file']:
@@ -175,23 +188,27 @@ class ZarrBackend(AbstractTileService):
             logger.error(f'Failed to open zarr dataset at {self.__path}, ignoring it. Cause: {e}')
             raise NexusTileServiceException(f'Cannot open dataset ({e})')
 
-    def update(self, force: bool = False) -> bool:
-        if force or (self.__credentials is not None and not self.__credentials.is_valid()):
-            try:
+    def update(self, force: bool = False, load: bool = False) -> bool:
+        try:
+            if force or (self.__credentials is not None and not self.__credentials.is_valid()):
                 logger.info(f'Refreshing zarr dataset {self._name} at {self.__path}')
-                self.__ds = self.__open_ds()
+                self.__open = False
+                self.__credentials.renew()
+                # self.__ds = self.__open_ds()
                 self._last_updated = datetime.now()
-            except Exception as e:
-                logger.error('Backend update failed')
-                logger.exception(e)
-                return False
 
-        return True
+            if load:
+                _ = self.__ds
+
+            return True
+        except Exception as e:
+            logger.error('Backend update failed')
+            logger.exception(e)
+            return False
 
     def heartbeat(self) -> bool:
-        # TODO: This is temporary, eventually we should use the logic to be introduced for SDAP-517 (PR#312) to evaluate
-        #  if data is accessible currently.
-        return True
+        # True if cred management is not needed or if managed creds are valid
+        return self.__credentials is None or self.__credentials.is_valid()
 
     def get_dataseries_list(self, simple=False):
         ds = {
