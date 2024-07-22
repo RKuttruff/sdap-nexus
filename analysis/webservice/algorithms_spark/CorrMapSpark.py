@@ -19,6 +19,7 @@ from functools import partial
 
 import numpy as np
 
+from nexustiles.nexustiles import NexusTileService
 from webservice.NexusHandler import nexus_handler, DEFAULT_PARAMETERS_SPEC
 from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.webmodel import NexusProcessingException, NexusResults, NoDataException
@@ -57,7 +58,7 @@ class CorrMapNexusSparkHandlerImpl(NexusCalcSparkHandler):
         # print 'days_at_a_time = ', days_at_a_time
         t_incr = 86400 * days_at_a_time
 
-        tile_service = tile_service_factory()
+        tile_service = tile_service_factory(spark=True, collections=list(ds))
 
         # Compute the intermediate summations needed for the Pearson 
         # Correlation Coefficient.  We use a one-pass online algorithm
@@ -230,6 +231,8 @@ class CorrMapNexusSparkHandlerImpl(NexusCalcSparkHandler):
         # Launch Spark computations
         spark_nparts = self._spark_nparts(nparts_requested)
         self.log.info('Using {} partitions'.format(spark_nparts))
+
+        NexusTileService.save_to_spark(self._sc, *self._ds)
 
         rdd = self._sc.parallelize(nexus_tiles_spark, spark_nparts)
         sum_tiles_part = rdd.map(partial(self._map, self._tile_service_factory))

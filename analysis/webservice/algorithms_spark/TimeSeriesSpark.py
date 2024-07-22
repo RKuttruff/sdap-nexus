@@ -16,9 +16,9 @@
 import itertools
 import logging
 import traceback
-from io import StringIO
 from datetime import datetime
 from functools import partial
+from io import StringIO
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -29,10 +29,12 @@ import shapely.wkt
 from backports.functools_lru_cache import lru_cache
 from pytz import timezone
 from scipy import stats
+
+from nexustiles.nexustiles import NexusTileService
 from webservice import Filtering as filtering
 from webservice.NexusHandler import nexus_handler
-from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.algorithms_spark import utils
+from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.webmodel import NexusResults, NoDataException, NexusProcessingException
 
 EPOCH = timezone('UTC').localize(datetime(1970, 1, 1))
@@ -464,6 +466,8 @@ def spark_driver(daysinrange, bounding_polygon, ds, tile_service_factory, metric
                          in np.array_split(daysinrange, spark_nparts)]
 
     # Launch Spark computations
+    NexusTileService.save_to_spark(sc, ds)
+
     rdd = sc.parallelize(nexus_tiles_spark, spark_nparts)
     metrics_callback(partitions=rdd.getNumPartitions())
     results = rdd.flatMap(partial(calc_average_on_day, tile_service_factory, metrics_callback, normalize_dates, min_elevation, max_elevation)).collect()
@@ -482,7 +486,7 @@ def calc_average_on_day(tile_service_factory, metrics_callback, normalize_dates,
     (bounding_polygon, dataset, timestamps, fill) = tile_in_spark
     if len(timestamps) == 0:
         return []
-    tile_service = tile_service_factory()
+    tile_service = tile_service_factory(spark=True, collections=[dataset])
 
     logger.info(f'{max_elevation=} {min_elevation=}')
 

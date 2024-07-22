@@ -26,6 +26,7 @@ from matplotlib import cm
 from matplotlib.ticker import FuncFormatter
 from pytz import timezone
 
+from nexustiles.nexustiles import NexusTileService
 from webservice.NexusHandler import nexus_handler
 from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.algorithms_spark import utils
@@ -46,7 +47,7 @@ class HofMoellerCalculator(object):
         (latlon, tile_id, index,
          min_lat, max_lat, min_lon, max_lon, dataset) = tile_in_spark
 
-        tile_service = tile_service_factory()
+        tile_service = tile_service_factory(spark=True, collections=[dataset])
         try:
             # Load the dataset tile
             tile = tile_service.find_tile_by_id(tile_id, metrics_callback=metrics_callback, ds=dataset)[0]
@@ -272,7 +273,9 @@ def hof_tuple_to_dict(t, avg_var_name):
             'min': t[7]}
 
 
-def spark_driver(sc, latlon, tile_service_factory, nexus_tiles_spark, metrics_callback, normalize_dates):
+def spark_driver(sc, ds, latlon, tile_service_factory, nexus_tiles_spark, metrics_callback, normalize_dates):
+    NexusTileService.save_to_spark(sc, ds)
+
     # Parallelize list of tile ids
     rdd = sc.parallelize(nexus_tiles_spark, determine_parllelism(len(nexus_tiles_spark)))
     if latlon == 0:
@@ -372,6 +375,7 @@ class LatitudeTimeHoffMoellerSparkHandlerImpl(BaseHoffMoellerSparkHandlerImpl):
             raise NoDataException(reason="No data found for selected timeframe")
 
         results = spark_driver(self._sc,
+                               ds,
                                self._latlon,
                                self._tile_service_factory,
                                nexus_tiles_spark,
@@ -429,6 +433,7 @@ class LongitudeTimeHoffMoellerSparkHandlerImpl(BaseHoffMoellerSparkHandlerImpl):
             raise NoDataException(reason="No data found for selected timeframe")
 
         results = spark_driver(self._sc,
+                               ds,
                                self._latlon,
                                self._tile_service_factory,
                                nexus_tiles_spark,
