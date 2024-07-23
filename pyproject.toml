@@ -68,6 +68,7 @@ dask = "*"
 zarr = "2.11.3"
 pandas = "<2.1.0rc0"
 psutil = "*"
+sample-sdap-plugin = {path = "plugin/sample-sdap-plugin/dist/sample_sdap_plugin-1.0.0-py3-none-any.whl"}
 
 
 [tool.poetry.dev-dependencies]

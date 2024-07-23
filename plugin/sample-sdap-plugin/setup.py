@@ -13,20 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[global]
-server.socket_port=8083
-server.socket_host = '127.0.0.1'
-server.max_simultaneous_requests = 10
 
-[livy]
-livy_port = 8998
-livy_host = localhost
-server.socket_port = 8084
-server.socket_host = '127.0.0.1'
+import setuptools
 
-[static]
-static_enabled=true
-static_dir=static
+setuptools.setup(
+    name='sample_sdap_plugin',
+    version='1.0.0',
+    packages=setuptools.find_packages(),
+    install_requires=[],
 
-[modules]
-module_dirs=webservice.algorithms,webservice.algorithms_spark,webservice.algorithms.doms,webservice.management,sdap_plugin
+)

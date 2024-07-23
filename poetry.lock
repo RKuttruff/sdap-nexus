@@ -1680,8 +1680,8 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">=1.20.3", markers = "python_version < \"3.10\""},
-    {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
     {version = ">=1.21.0", markers = "python_version >= \"3.10\" and python_version < \"3.11\""},
+    {version = ">=1.23.2", markers = "python_version >= \"3.11\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -2181,6 +2181,20 @@ botocore = ">=1.12.36,<2.0a.0"
 crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 
 [[package]]
+name = "sample_sdap_plugin"
+version = "1.0.0"
+description = ""
+optional = false
+python-versions = "*"
+files = [
+    {file = "sample_sdap_plugin-1.0.0-py3-none-any.whl", hash = "sha256:7def324ceaeeb0da3155f489924cabf8b8a3759c447043c8701602c057620df7"},
+]
+
+[package.source]
+type = "file"
+url = "plugin/sample-sdap-plugin/dist/sample_sdap_plugin-1.0.0-py3-none-any.whl"
+
+[[package]]
 name = "schema"
 version = "0.7.7"
 description = "Simple data validation library"
@@ -2645,4 +2659,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "~=3.8"
-content-hash = "d5724c5c4ddd9411f2faf5519c3b3584bc9b8259e84d5c692911322ff67f4042"
+content-hash = "26a738f2cc698a2afe61d5b8d650bd689e25c3cf3967e753b31aedc704453a75"
