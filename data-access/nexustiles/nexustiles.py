@@ -16,10 +16,13 @@
 import configparser
 import json
 import logging
+import os
+import pickle
 import sys
 import threading
 from datetime import datetime
 from functools import reduce, wraps
+from tempfile import TemporaryDirectory
 from time import sleep
 from typing import Dict, Union
 
@@ -27,6 +30,7 @@ import numpy as np
 import numpy.ma as ma
 import pkg_resources
 import pysolr
+from pyspark import SparkContext, SparkFiles
 from pytz import timezone, UTC
 from shapely.geometry import box
 from yarl import URL
@@ -114,30 +118,40 @@ class NTSInitializer:
 
     def init(self, config):
         self._log.info('*** RUNNING NTS INITIALIZATION ***')
-        NexusTileService(config)
+        NexusTileService.instance(config)
 
 
 class NexusTileService:
-    backends: Dict[Union[None, str], Dict[str, Union[AbstractTileService, bool]]] = {}
+    DS_LOCK = threading.Lock()
+    PERSIST_LOCK = threading.Lock()
 
+    __instance = None
+    __update_thread = None
+    __temp_dir: TemporaryDirectory = None
+    __persist_update_dict = {}
+
+    backends: Dict[Union[None, str], Dict[str, Union[AbstractTileService, bool]]] = {}
     ds_config = None
 
-    DS_LOCK = threading.Lock()
-
-    __update_thread = None
-
     @staticmethod
-    def __update_datasets_loop():
+    def __update_datasets_loop(wait_first=False):
+        if wait_first:
+            sleep(3600)
+
         while True:
             with NexusTileService.DS_LOCK:
                 NexusTileService._update_datasets()
             sleep(3600)
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, **kwargs):
+        logger.info(f'NTS init. Spark worker: {kwargs.get("spark", False)}')
+
         self._config = configparser.RawConfigParser()
         self._config.read(NexusTileService._get_config_files('config/datasets.ini'))
 
         self._alg_config = config
+
+        self.in_spark_worker = kwargs.get("spark", False)
 
         if not NexusTileService.backends:
             NexusTileService.ds_config = configparser.RawConfigParser()
@@ -151,9 +165,15 @@ class NexusTileService:
         if config:
             self.override_config(config)
 
+        if self.in_spark_worker:
+            NexusTileService.load_from_spark(*kwargs.get('collections', []))
+        else:
+            NexusTileService.__temp_dir = TemporaryDirectory()
+
         if not NexusTileService.__update_thread:
             NexusTileService.__update_thread = threading.Thread(
                 target=NexusTileService.__update_datasets_loop,
+                kwargs=dict(wait_first=self.in_spark_worker),
                 name='dataset_update',
                 daemon=True
             )
@@ -161,6 +181,75 @@ class NexusTileService:
             logger.info('Starting dataset refresh thread')
 
             NexusTileService.__update_thread.start()
+
+    @staticmethod
+    def instance(config=None, **kwargs):
+        if NexusTileService.__instance is None:
+            NexusTileService.__instance = NexusTileService(config, **kwargs)
+
+        return NexusTileService.__instance
+
+    @staticmethod
+    def save_to_spark(sc: SparkContext, *collections):
+        """
+        Persists collections to Spark to be loaded by Spark workers. Used to avoid loading in all the datasets by the
+        workers. NOTE: This should only be run on the Spark driver node.
+
+        @param sc: The SparkContext to save the collection(s) to. This should be available to Spark algorithms through
+        the NexusCalcSparkHandler parent object's _sc attribute. Otherwise, it should be obtained from the
+        webservice.nexus_tornado.app_builders.SparkContextBuilder.SparkContextBuilder.get_spark_context() method.
+        @param collections: The names of the collections to be persisted. These should correspond to collections in the
+        nexusdatasets Solr collection. Collections that are not known to the Nexus Tile Service will be ignored.
+        """
+        logger.info('save to spark')
+
+        with NexusTileService.PERSIST_LOCK:
+            for collection in collections:
+                if collection in NexusTileService.backends:
+                    if collection in NexusTileService.__persist_update_dict and \
+                            NexusTileService.__persist_update_dict[collection] > \
+                            NexusTileService.backends[collection]['backend'].last_updated():
+                        logger.info(f'No need to resave {collection} as it has not changed since last save')
+                        continue
+                    else:
+                        logger.info('Ensuring dataset is up to date, valid and loaded')
+                        NexusTileService.backends[collection]['backend'].update(load=True)
+
+                    logger.info(f'Trying to save backend for collection {collection}')
+                    path = os.path.join(NexusTileService.__temp_dir.name, f'{collection}.bknd')
+                    NexusTileService.__persist_update_dict[collection] = datetime.now()
+                    try:
+                        with open(path, 'wb') as fp:
+                            pickle.dump(NexusTileService.backends[collection], fp, protocol=-1)
+                            sc.addFile(path)
+                        logger.info(f'Saved collection {collection} to {path} ({os.stat(path).st_size:,} bytes)')
+                    except TypeError as e:
+                        logger.error(f'Cannot save collection {collection}. {e!r}')
+                else:
+                    logger.error(f'Collection {collection} does not exist and was skipped')
+
+    @staticmethod
+    def load_from_spark(*collections):
+        logger.info('load from spark')
+
+        all_loaded = True
+
+        with NexusTileService.PERSIST_LOCK:
+            for collection in collections:
+                path = SparkFiles.get(f'{collection}.bknd')
+                logger.info(f'Trying to load backend for collection {collection} from {path}')
+                if not os.path.exists(path):
+                    logger.error(f'Path {path} does not exist')
+                    all_loaded = False
+                    continue
+
+                with open(path, 'rb') as fp:
+                    NexusTileService.backends[collection] = pickle.load(fp)
+
+        if not all_loaded:
+            logger.info('Some collections could not be found, loading in nexusproto backends to be safe')
+            with NexusTileService.DS_LOCK:
+                NexusTileService._update_datasets(just_nexusproto=True)
 
     @staticmethod
     def is_update_thread_alive() -> bool:
@@ -183,7 +272,6 @@ class NexusTileService:
 
             return b['backend']
 
-
     @staticmethod
     def _get_datasets_store():
         solr_url = NexusTileService.ds_config.get("solr", "host")
@@ -205,7 +293,7 @@ class NexusTileService:
             return solrcon
 
     @staticmethod
-    def _update_datasets():
+    def _update_datasets(just_nexusproto=False):
         update_logger = logging.getLogger("nexus-tile-svc.backends")
         solrcon = NexusTileService._get_datasets_store()
 
@@ -246,19 +334,24 @@ class NexusTileService:
                 if store_type == 'nexus_proto' or store_type == 'nexusproto':
                     update_logger.info(f"Detected new nexusproto dataset {d_id}, using default nexusproto backend")
                     NexusTileService.backends[d_id] = NexusTileService.backends[None]
-                elif store_type == 'zarr':
-                    update_logger.info(f"Detected new zarr dataset {d_id}, opening new zarr backend")
+                elif not just_nexusproto:
+                    if store_type == 'zarr':
+                        update_logger.info(f"Detected new zarr dataset {d_id}, opening new zarr backend")
 
-                    ds_config = json.loads(dataset['config'][0])
-                    try:
-                        NexusTileService.backends[d_id] = {
-                            'backend': ZarrBackend(dataset_name=dataset['dataset_s'], **ds_config),
-                            'up': True
-                        }
-                    except NexusTileServiceException:
+                        ds_config = json.loads(dataset['config'][0])
+                        try:
+                            NexusTileService.backends[d_id] = {
+                                'backend': ZarrBackend(dataset_name=dataset['dataset_s'], **ds_config),
+                                'up': True
+                            }
+                        except NexusTileServiceException:
+                            added_datasets -= 1
+                    else:
+                        update_logger.warning(f'Unsupported backend {store_type} for dataset {d_id}')
                         added_datasets -= 1
                 else:
-                    update_logger.warning(f'Unsupported backend {store_type} for dataset {d_id}')
+                    update_logger.info(f'Skipping dataset {d_id} for now because we want to defer loading '
+                                       f'non-nexusproto backends for now')
                     added_datasets -= 1
 
         removed_datasets = set(NexusTileService.backends.keys()).difference(present_datasets)
@@ -400,7 +493,6 @@ class NexusTileService:
             heartbeats[backend_name] = backend.heartbeat()
 
         return heartbeats
-
 
     @tile_data()
     @catch_not_implemented
@@ -909,8 +1001,8 @@ class NexusTileService:
                     var_names = [store_doc['tile_var_name_s']]
 
                 standard_name = store_doc.get(
-                        'tile_standard_name_s',
-                        json.dumps([None] * len(var_names))
+                    'tile_standard_name_s',
+                    json.dumps([None] * len(var_names))
                 )
                 if '[' in standard_name:
                     standard_names = json.loads(standard_name)

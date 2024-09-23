@@ -34,6 +34,7 @@ from shapely.geometry import Point
 from shapely.geometry import box
 from shapely.geos import WKTReadingError
 
+from nexustiles.nexustiles import NexusTileService
 from webservice.NexusHandler import nexus_handler
 from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.algorithms.doms import config as edge_endpoints
@@ -498,6 +499,8 @@ def spark_matchup_driver(tile_ids, bounding_wkt, primary_ds_name, secondary_ds_n
     from functools import partial
 
     with DRIVER_LOCK:
+        NexusTileService.save_to_spark(sc, primary_ds_name, *secondary_ds_names.split(','))
+
         # Broadcast parameters
         primary_b = sc.broadcast(primary_ds_name)
         secondary_b = sc.broadcast(secondary_ds_names)
@@ -619,7 +622,10 @@ def match_satellite_to_insitu(tile_ids, primary_b, secondary_b, parameter_b, tt_
     if len(tile_ids) == 0:
         return []
 
-    tile_service = tile_service_factory()
+    tile_service = tile_service_factory(
+        spark=True,
+        collections=[primary_b.value] + secondary_b.value.split(',')
+    )
 
     # Determine the spatial temporal extents of this partition of tiles
     tiles_bbox = tile_service.get_bounding_box(tile_ids)

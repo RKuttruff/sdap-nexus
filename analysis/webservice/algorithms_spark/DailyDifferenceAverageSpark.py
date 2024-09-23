@@ -281,6 +281,8 @@ def spark_anomalies_driver(tile_service_factory, tile_ids, bounding_wkt, dataset
     from functools import partial
 
     with DRIVER_LOCK:
+        NexusTileService.save_to_spark(sc, dataset, climatology)
+
         bounding_wkt_b = sc.broadcast(bounding_wkt)
         dataset_b = sc.broadcast(dataset)
         climatology_b = sc.broadcast(climatology)
@@ -329,7 +331,7 @@ def calculate_diff(tile_service_factory, tile_ids, bounding_wkt, dataset, climat
     tile_ids = list(tile_ids)
     if len(tile_ids) == 0:
         return []
-    tile_service = tile_service_factory()
+    tile_service = tile_service_factory(spark=True, collections=[dataset.value, climatology.value])
 
     for tile_id in tile_ids:
         # Get the dataset tile

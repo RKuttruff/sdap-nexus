@@ -20,6 +20,7 @@ import numpy as np
 import shapely.geometry
 from pytz import timezone
 
+from nexustiles.nexustiles import NexusTileService
 from webservice.NexusHandler import nexus_handler
 from webservice.algorithms_spark.NexusCalcSparkHandler import NexusCalcSparkHandler
 from webservice.webmodel import NexusResults, NexusProcessingException, NoDataException
@@ -203,6 +204,8 @@ class TimeAvgMapNexusSparkHandlerImpl(NexusCalcSparkHandler):
         spark_nparts = self._spark_nparts(nparts_requested)
         self.log.info('Using {} partitions'.format(spark_nparts))
 
+        NexusTileService.save_to_spark(self._sc, ds)
+
         rdd = self._sc.parallelize(nexus_tiles_spark, spark_nparts)
         metrics_record.record_metrics(partitions=rdd.getNumPartitions())
         sum_count_part = rdd.map(partial(self._map, self._tile_service_factory, metrics_record.record_metrics, min_elevation, max_elevation))
@@ -278,7 +281,7 @@ class TimeAvgMapNexusSparkHandlerImpl(NexusCalcSparkHandler):
         startTime = tile_in_spark[1]
         endTime = tile_in_spark[2]
         ds = tile_in_spark[3]
-        tile_service = tile_service_factory()
+        tile_service = tile_service_factory(spark=True, collections=[ds])
 
         tile_inbounds_shape = (max_y - min_y + 1, max_x - min_x + 1)
 

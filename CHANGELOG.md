@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SDAP-497: Added tool to ease building of releases. Can build from ASF distributions, git repos, and local
 - SDAP-520: (Documentation) Added guide to docs for evaluating official release candidates.
 ### Changed
+- Performance improvements to non-nexusproto dataset backend handling
 ### Deprecated
 ### Removed
 ### Fixed
