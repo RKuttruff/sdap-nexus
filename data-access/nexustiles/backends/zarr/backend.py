@@ -75,7 +75,7 @@ class ZarrBackend(AbstractTileService):
         self.__latitude = config['coords']['latitude']
         self.__time = config['coords']['time']
 
-        self.__depth = config['coords'].get('depth')
+        self.__elevation = config['coords'].get('elevation')
 
         if self.__store_type in ['', 'file']:
             store = self.__path
@@ -243,11 +243,11 @@ class ZarrBackend(AbstractTileService):
             else:
                 times = [(start_time, end_time)]
 
-        if 'depth' in kwargs:
-            params['depth'] = kwargs['depth']
-        elif 'min_depth' in kwargs or 'max_depth' in kwargs:
-            params['min_depth'] = kwargs.get('min_depth')
-            params['max_depth'] = kwargs.get('max_depth')
+        if 'elevation' in kwargs:
+            params['elevation'] = kwargs['elevation']
+        elif 'min_elevation' in kwargs or 'max_elevation' in kwargs:
+            params['min_elevation'] = kwargs.get('min_elevation')
+            params['max_elevation'] = kwargs.get('max_elevation')
 
         if times:
             return [ZarrBackend.__to_url(self._name, min_time=t[0], max_time=t[1], **params) for t in times]
@@ -454,6 +454,14 @@ class ZarrBackend(AbstractTileService):
         if sel_t is not None:
             matched = matched.sel(sel_t, method=method)
 
+        print(matched)
+        print({self.__elevation: tile.elevation})
+
+        if tile.elevation is not None:
+            matched = matched.sel({self.__elevation: tile.elevation})
+
+        print(matched)
+
         tile.latitudes = ma.masked_invalid(matched[self.__latitude].to_numpy())
         tile.longitudes = ma.masked_invalid(matched[self.__longitude].to_numpy())
 
@@ -464,7 +472,10 @@ class ZarrBackend(AbstractTileService):
 
         tile.times = ma.masked_invalid(times)
 
-        var_data = [matched[var].to_numpy() for var in self.__variables]
+        var_data = np.broadcast_arrays(*[matched[var].to_numpy() for var in self.__variables])
+
+        print(var_data)
+        print([v.shape for v in var_data])
 
         if len(self.__variables) > 1:
             tile.data = ma.masked_invalid(var_data)
@@ -508,6 +519,17 @@ class ZarrBackend(AbstractTileService):
             tile.max_time = datetime.utcfromtimestamp(int(url.query['max_time']))
         except KeyError:
             pass
+
+        min_elevation = url.query.get('min_elevation')
+        max_elevation = url.query.get('max_elevation')
+
+        if min_elevation is not None:
+            min_elevation = float(min_elevation)
+
+        if max_elevation is not None:
+            max_elevation = float(max_elevation)
+
+        tile.elevation = slice(min_elevation, max_elevation)
 
         tile.meta_data = {}
 

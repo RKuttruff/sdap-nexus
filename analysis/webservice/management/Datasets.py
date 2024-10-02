@@ -35,7 +35,7 @@ CONFIG_SCHEMA = Schema({
         'latitude': str,
         'longitude': str,
         'time': str,
-        Opt('depth'): str
+        Opt('elevation'): str
     },
     Opt('aws'): {
         Opt('accessKeyID'): str,
